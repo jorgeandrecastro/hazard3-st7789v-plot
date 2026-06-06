@@ -25,9 +25,9 @@ dependencies = [
 
 [[package]]
 name = "embassy-st7789v"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bcfc8afb0012c371c02650caf414d6d5f10aaed055b7c027776c267fbd08854"
+checksum = "94caacfcf39d1735c87336a88c9938bb83cd06530b09969e780c0699cda7b432"
 dependencies = [
  "embassy-time",
  "embedded-hal 1.0.0",
@@ -36,9 +36,9 @@ dependencies = [
 
 [[package]]
 name = "embassy-st7789v-graphics"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7b60ea9f465b577805745150667441a52f5fa597c60109caaea69c2dcc9ea97"
+checksum = "7e2f087a09c70dddce7e1fa22214b7a2bd689edff400eb541fd8a219c13a6f37"
 dependencies = [
  "embassy-st7789v",
  "embedded-hal 1.0.0",
@@ -47,7 +47,7 @@ dependencies = [
 
 [[package]]
 name = "embassy-st7789v-plot"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "embassy-st7789v",
  "embassy-st7789v-graphics",

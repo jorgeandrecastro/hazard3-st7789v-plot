@@ -4,6 +4,22 @@ Tous les changements notables de ce projet seront documentés dans ce fichier.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et ce projet respecte le [Semantic Versioning](https://semver.org/lang/fr/).
 
+
+## [0.3.0] — 2026
+
+### Ajouté
+- `LineChartBuffered<N>` : version framebuffer de `LineChart`, zéro clignotement
+  - `new(config)` : même interface que `LineChart`
+  - `push(value)` : ajout de données identique
+  - `clear()` : réinitialisation avec `initialized = false`
+  - `render_buf(&mut St7789vBuffered)`: rendu complet en RAM, **synchrone**
+  - `draw_f32_buf` : helper interne pour afficher les labels flottants en RAM
+- Dépendance ajoutée : `embassy-st7789v-graphics` (pour `GraphicsBuffered` et `line_buf`)
+
+### Modifié
+- Aucun changement d'API existante : compatibilité ascendante totale
+
+
 ## [0.2.0] - 2026-05-29
 
 ### Ajouté

@@ -1,30 +1,36 @@
 #![no_std]
 #![forbid(unsafe_code)]
-
 //! # embassy-st7789v-plot
 //!
 //! Moteur de tracé de graphiques cartésiens (X, Y) adaptatifs et configurables
-//! pour écrans TFT LCD ST7789V, s'appuyant sur la structure `Graphics`.
+//! pour écrans TFT LCD ST7789V, s'appuyant sur [`embassy-st7789v`](https://docs.rs/embassy-st7789v).
 //!
 //! ## Caractéristiques principales
 //!
 //! - **`#![no_std]` + `#![forbid(unsafe_code)]`** : Sûr et optimisé pour le bare-metal.
 //! - **Zéro allocation dynamique** : Buffers statiques uniquement (ring buffer).
-//! - **API async** : Basée sur Embassy pour des transferts SPI non bloquants.
-//! - **Rendu intelligent (Double Phase)** : Le cadre, les étiquettes et les titres sont tracés 
-//!   une seule fois à l'initialisation. Seuls la grille interne et le signal sont rafraîchis dynamiquement.
-//! - **Axes configurables** : Graduations statiques avec labels personnalisés et détection automatique / coloration du zéro.
-//! - **Historique circulaire** : Jusqu'à 240 points (limité par la largeur physique de l'écran).
-//! - **Protection stricte des bordures** : Clamping des primitives géométriques à l'espace interne utile pour éviter tout débordement sur les axes.
+//! - **Rendu intelligent (Double Phase)** : Cadre, étiquettes et titres tracés une seule fois.
+//!   Seuls la grille interne et le signal sont rafraîchis dynamiquement.
+//! - **Axes configurables** : Graduations statiques avec labels personnalisés et détection
+//!   automatique / coloration du zéro.
+//! - **Historique circulaire** : Jusqu'à 240 points (limite physique de l'écran).
+//! - **Protection stricte des bordures** : Clamping des primitives à l'espace interne utile.
+//! - **Deux modes de rendu** :
+//!
+//! | Mode | Type | Clignotement |
+//! |------|------|:------------:|
+//! | [`LineChart`] + [`render()`](LineChart::render) | async, direct SPI | possible |
+//! | [`LineChartBuffered`] + [`render_buf()`](LineChartBuffered::render_buf) + `flush()` | sync, RAM | **aucun** |
 //!
 //! ## Structures principales
 //!
-//! - [`Graphics`] : Contexte graphique pour les primitives de dessin.
-//! - [`AxisConfig`] : Configuration d'un axe (min, max, pas de graduation, label).
-//! - [`PlotConfig`] : Configuration complète du graphique (position, marges, couleurs).
-//! - [`LineChart`] : Gestionnaire du graphique avec données historiques.
+//! - [`Graphics`] : Contexte graphique async (direct SPI).
+//! - [`AxisConfig`] : Configuration d'un axe (min, max, pas, label).
+//! - [`PlotConfig`] : Configuration complète (position, marges, couleurs, axes).
+//! - [`LineChart`] : Graphique async avec rendu direct SPI.
+//! - [`LineChartBuffered`] : Graphique sync avec rendu framebuffer — zéro clignotement.
 //!
-//! ## Exemple d'utilisation
+//! ## Exemple — mode direct async
 //!
 //! ```no_run
 //! # use embassy_st7789v::{Color, St7789v, NoPin};
@@ -33,51 +39,107 @@
 //! use embassy_st7789v_plot::{Graphics, AxisConfig, PlotConfig, LineChart};
 //!
 //! # async fn example<SPI, DC>(display: &mut St7789v<SPI, DC, NoPin>)
-//! # where
-//! #     SPI: SpiDevice,
-//! #     DC: OutputPin,
+//! # where SPI: SpiDevice, DC: OutputPin,
 //! # {
-//! // Créer les configurations d'axes
 //! let x_axis = AxisConfig::new(0.0, 10.0, 2.0, b"Time (s)");
 //! let y_axis = AxisConfig::new(-50.0, 50.0, 20.0, b"Volt (mV)");
 //!
-//! // Créer la configuration complète du graphique
 //! let config = PlotConfig {
-//!     x: 10,
-//!     y: 10,
-//!     width: 220,
-//!     height: 200,
-//!     margin_left: 30,
-//!     margin_right: 10,
-//!     margin_top: 10,
-//!     margin_bottom: 30,
-//!     x_axis,
-//!     y_axis,
-//!     bg_color: Color::BLACK,
-//!     line_color: Color::GREEN,
-//!     axis_color: Color::WHITE,
-//!     grid_color: Color::from_rgb(64, 64, 64),
-//!     text_color: Color::WHITE,
+//!     x: 10, y: 10, width: 220, height: 200,
+//!     margin_left: 30, margin_right: 10,
+//!     margin_top: 10, margin_bottom: 30,
+//!     x_axis, y_axis,
+//!     bg_color:    Color::BLACK,
+//!     line_color:  Color::GREEN,
+//!     axis_color:  Color::WHITE,
+//!     grid_color:  Color::GRAY,
+//!     text_color:  Color::WHITE,
 //!     label_color: Color::CYAN,
 //! };
 //!
-//! // Créer le gestionnaire de graphique (N = 100 points max)
 //! let mut chart: LineChart<100> = LineChart::new(config);
-//!
-//! // Ajouter des données
 //! chart.push(12.4);
 //! chart.push(-5.2);
 //! chart.push(22.1);
 //!
-//! // Rendu asynchrone sur l'affichage (mise à jour incrémentale de la zone interne)
 //! let mut gfx = Graphics::new_no_rst(display);
 //! chart.render(&mut gfx).await;
 //! # }
 //! ```
-
-use embassy_st7789v::{Color, NoPin, St7789v, SCREEN_H, SCREEN_W};
+//!
+//! ## Exemple : mode framebuffer sync (zéro clignotement)
+//!
+//! ```no_run
+//! # use embassy_st7789v::{Color, St7789v, St7789vBuffered, NoPin};
+//! # use embedded_hal::digital::OutputPin;
+//! # use embedded_hal_async::spi::SpiDevice;
+//! use embassy_st7789v_plot::{AxisConfig, PlotConfig, LineChartBuffered};
+//!
+//! # async fn example<SPI, DC>(spi: SPI, dc: DC, rst: NoPin)
+//! # where SPI: SpiDevice, DC: OutputPin,
+//! # {
+//! let config = PlotConfig {
+//!     x: 10, y: 10, width: 220, height: 200,
+//!     margin_left: 30, margin_right: 10,
+//!     margin_top: 10, margin_bottom: 30,
+//!     x_axis: AxisConfig::new(0.0, 10.0, 2.0, b"Time (s)"),
+//!     y_axis: AxisConfig::new(-50.0, 50.0, 20.0, b"Volt (mV)"),
+//!     bg_color:    Color::BLACK,
+//!     line_color:  Color::GREEN,
+//!     axis_color:  Color::WHITE,
+//!     grid_color:  Color::GRAY,
+//!     text_color:  Color::WHITE,
+//!     label_color: Color::CYAN,
+//! };
+//!
+//! let mut ecran = St7789vBuffered::new(St7789v::new(spi, dc, rst));
+//! ecran.driver().init().await.unwrap();
+//!
+//! let mut chart: LineChartBuffered<100> = LineChartBuffered::new(config);
+//!
+//! loop {
+//!     chart.push(12.4);
+//!     chart.render_buf(&mut ecran);  // tout en RAM, synchrone
+//!     ecran.flush().await.unwrap();  // envoi unique → zéro clignotement
+//! }
+//! # }
+//! ```
+//!
+//! ## Patron de borrow : mode direct
+//!
+//! `Graphics` tient un `&mut St7789v` pour toute sa durée de vie.
+//! Pour appeler les méthodes du driver (texte, orientation…),
+//! `gfx` doit être sorti de portée au préalable.
+//!
+//! ```rust,no_run
+//! {
+//!     let mut gfx = Graphics::new_no_rst(&mut display);
+//!     chart.render(&mut gfx).await;
+//! } // ← borrow libéré
+//! display.draw_str(8, 8, b"OK", Color::WHITE, Color::BLACK).await.unwrap();
+//! ```
+//!
+//! ## Patron de borrow : mode framebuffer
+//!
+//! `render_buf` prend `&mut St7789vBuffered` directement.
+//! Appeler `flush()` après le rendu.
+//!
+//! ```rust,no_run
+//! chart.render_buf(&mut ecran);  // sync
+//! ecran.flush().await.unwrap();  // async, envoi SPI unique
+//! ```
+//!
+//! ## Note sur les erreurs SPI
+//!
+//! Les fonctions de ce crate ignorent silencieusement les erreurs SPI.
+//! Si votre application requiert une gestion d'erreur fine, utilisez
+//! directement `ecran.draw_pixel()`.
+//! Les primitives `render_buf` n'accèdent jamais au SPI — aucune erreur possible.
 use embedded_hal::digital::OutputPin;
 use embedded_hal_async::spi::SpiDevice;
+use embassy_st7789v::{Color, NoPin, St7789v, St7789vBuffered, SCREEN_H, SCREEN_W};
+use embassy_st7789v_graphics::{GraphicsBuffered, line_buf};
+
 
 /// Taille maximale de l'historique des données du graphique.
 pub const PLOT_HISTORY_LIMIT: usize = 240;
@@ -633,5 +695,272 @@ impl<const N: usize> LineChart<N> {
             prev_x = next_x;
             prev_y = next_y;
         }
+    }
+
+}
+
+ // ─────────────────────────────────────────────────────────────────────────────
+// LineChart framebuffer — zéro clignotement
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Version framebuffer de [`LineChart`].
+///
+/// Identique à `LineChart` mais toutes les opérations de dessin écrivent
+/// dans le framebuffer RAM via `GraphicsBuffered` et les primitives `*_buf`.
+/// Aucun pixel n'est envoyé à l'écran avant l'appel à `flush()`.
+///
+/// # Patron d'utilisation
+///
+/// ```rust,no_run
+/// let mut chart: LineChartBuffered<100> = LineChartBuffered::new(config);
+/// chart.push(12.4);
+/// chart.render_buf(&mut ecran);  // tout en RAM, synchrone
+/// ecran.flush().await.unwrap();  // envoi unique → zéro clignotement
+/// ```
+pub struct LineChartBuffered<const N: usize> {
+    config: PlotConfig,
+    data: [f32; N],
+    head: usize,
+    count: usize,
+    plot_x: i32,
+    plot_y: i32,
+    plot_w: i32,
+    plot_h: i32,
+    initialized: bool,
+}
+
+impl<const N: usize> LineChartBuffered<N> {
+    pub fn new(config: PlotConfig) -> Self {
+        assert!(N <= PLOT_HISTORY_LIMIT);
+        assert!(config.x_axis.is_valid());
+        assert!(config.y_axis.is_valid());
+
+        let plot_x = config.x + config.margin_left;
+        let plot_y = config.y + config.margin_top;
+        let plot_w = config.width  - config.margin_left - config.margin_right;
+        let plot_h = config.height - config.margin_top  - config.margin_bottom;
+
+        Self { config, data: [0.0; N], head: 0, count: 0,
+               plot_x, plot_y, plot_w, plot_h, initialized: false }
+    }
+
+    pub fn push(&mut self, value: f32) {
+        self.data[self.head] = value;
+        self.head = (self.head + 1) % N;
+        if self.count < N { self.count += 1; }
+    }
+
+    pub fn clear(&mut self) {
+        self.head = 0; self.count = 0;
+        self.data.fill(0.0);
+        self.initialized = false;
+    }
+
+    #[inline]
+    fn get_sample(&self, index: usize) -> f32 {
+        let oldest = if self.count < N { 0 } else { self.head };
+        self.data[(oldest + index) % N]
+    }
+
+    #[inline]
+    fn scale_y(&self, value: f32) -> i32 {
+        let y_min = self.config.y_axis.start;
+        let y_max = self.config.y_axis.end;
+        if y_max <= y_min { return self.plot_y + self.plot_h - 1; }
+        let ratio = (value.max(y_min).min(y_max) - y_min) / (y_max - y_min);
+        self.plot_y + self.plot_h - 1 - (ratio * (self.plot_h - 1) as f32) as i32
+    }
+
+    #[inline]
+    fn scale_x(&self, index: usize) -> i32 {
+        if N <= 1 { return self.plot_x; }
+        self.plot_x + (index as i32 * (self.plot_w - 1)) / (N as i32 - 1)
+    }
+
+    #[inline]
+    fn scale_x_value(&self, value: f32) -> i32 {
+        let x_min = self.config.x_axis.start;
+        let x_max = self.config.x_axis.end;
+        if x_max <= x_min { return self.plot_x; }
+        let ratio = (value.max(x_min).min(x_max) - x_min) / (x_max - x_min);
+        self.plot_x + (ratio * (self.plot_w - 1) as f32) as i32
+    }
+
+    /// Rendu complet dans le framebuffer — **synchrone, sans `.await`**.
+    ///
+    /// Appeler `ecran.flush().await` après pour envoyer à l'écran.
+    pub fn render_buf<SPI, DC, RST>(
+        &mut self,
+        ecran: &mut St7789vBuffered<SPI, DC, RST>,
+    ) where
+        SPI: embedded_hal_async::spi::SpiDevice,
+        DC: embedded_hal::digital::OutputPin,
+        RST: embedded_hal::digital::OutputPin,
+    {
+        let right_edge  = self.plot_x + self.plot_w - 1;
+        let bottom_edge = self.plot_y + self.plot_h - 1;
+
+        // ── 1. Cadre, labels, titres — une seule fois ─────────────────────
+        if !self.initialized {
+            // Fond
+            ecran.fill_rect_buf(
+                self.config.x as u16,
+                (self.config.y - 16).max(0) as u16,
+                (self.config.x + self.config.width) as u16,
+                (self.config.y + self.config.height + 16).min(SCREEN_H as i32) as u16,
+                self.config.bg_color,
+            );
+
+            // Labels Y
+            let y_axis = &self.config.y_axis;
+            let y_range = y_axis.end - y_axis.start;
+            for i in 0..y_axis.tick_count() {
+                let value = y_axis.start + i as f32 * y_axis.step;
+                let ratio = (value - y_axis.start) / y_range;
+                let y_grid = bottom_edge - (ratio * (self.plot_h - 1) as f32) as i32;
+                let label_y = (y_grid - 4).max(self.config.y + 8).min(self.config.y + self.config.height - 8);
+                let color = if value.abs() < 0.001 { Color::GREEN } else { self.config.text_color };
+                // Rendu du label f32 via draw_f32_buf (voir ci-dessous)
+                self.draw_f32_buf(ecran, (self.config.x + 2) as u16, label_y as u16, value, 1, color);
+            }
+
+            // Labels X
+            let x_axis = &self.config.x_axis;
+            for i in 0..x_axis.tick_count() {
+                let value = x_axis.start + i as f32 * x_axis.step;
+                let x_grid = self.scale_x_value(value);
+                let label_x = (x_grid - 8).max(self.config.x + 2).min(self.config.x + self.config.width - 20);
+                self.draw_f32_buf(ecran, label_x as u16, (bottom_edge + 4) as u16, value, 1, self.config.text_color);
+            }
+
+            // Titres
+            ecran.draw_str_buf(
+                (self.config.x + 2) as u16,
+                (self.config.y - 16).max(0) as u16,
+                y_axis.label,
+                self.config.label_color,
+                self.config.bg_color,
+            );
+            let label_x_x = self.plot_x + (self.plot_w / 2) - (x_axis.label.len() as i32 * 6 / 2);
+            ecran.draw_str_buf(
+                label_x_x.max(self.config.x + 2) as u16,
+                (self.config.y + self.config.height + 4).min(SCREEN_H as i32 - 8) as u16,
+                x_axis.label,
+                self.config.label_color,
+                self.config.bg_color,
+            );
+
+            // Bordures
+            for px in self.plot_x..=right_edge {
+                ecran.set_pixel(px as u16, self.plot_y as u16,   self.config.axis_color);
+                ecran.set_pixel(px as u16, bottom_edge as u16,   self.config.axis_color);
+            }
+            for py in self.plot_y..=bottom_edge {
+                ecran.set_pixel(self.plot_x as u16,  py as u16,  self.config.axis_color);
+                ecran.set_pixel(right_edge as u16,   py as u16,  self.config.axis_color);
+            }
+
+            self.initialized = true;
+        }
+
+        // ── 2. Nettoyage intérieur ────────────────────────────────────────
+        ecran.fill_rect_buf(
+            (self.plot_x + 1) as u16,
+            (self.plot_y + 1) as u16,
+            (right_edge  - 1) as u16,
+            (bottom_edge - 1) as u16,
+            self.config.bg_color,
+        );
+
+        // ── 3. Grille Y ───────────────────────────────────────────────────
+        let y_axis = &self.config.y_axis;
+        let y_range = y_axis.end - y_axis.start;
+        for i in 1..y_axis.tick_count().saturating_sub(1) {
+            let value = y_axis.start + i as f32 * y_axis.step;
+            let ratio = (value - y_axis.start) / y_range;
+            let y_grid = bottom_edge - (ratio * (self.plot_h - 1) as f32) as i32;
+            if y_grid > self.plot_y && y_grid < bottom_edge {
+                let color = if value.abs() < 0.001 { Color::GREEN } else { self.config.grid_color };
+                ecran.fill_rect_buf(
+                    (self.plot_x + 1) as u16, y_grid as u16,
+                    (right_edge  - 1) as u16, y_grid as u16,
+                    color,
+                );
+            }
+        }
+
+        // ── 4. Grille X ───────────────────────────────────────────────────
+        let x_axis = &self.config.x_axis;
+        for i in 1..x_axis.tick_count().saturating_sub(1) {
+            let value = x_axis.start + i as f32 * x_axis.step;
+            let x_grid = self.scale_x_value(value);
+            if x_grid > self.plot_x && x_grid < right_edge {
+                ecran.fill_rect_buf(
+                    x_grid as u16, (self.plot_y + 1) as u16,
+                    x_grid as u16, (bottom_edge - 1) as u16,
+                    self.config.grid_color,
+                );
+            }
+        }
+
+        // ── 5. Courbe ─────────────────────────────────────────────────────
+        if self.count < 2 {
+            if self.count == 1 {
+                let px = self.scale_x(0).max(self.plot_x + 1).min(right_edge - 1);
+                let py = self.scale_y(self.get_sample(0)).max(self.plot_y + 1).min(bottom_edge - 1);
+                ecran.set_pixel(px as u16, py as u16, self.config.line_color);
+            }
+            return;
+        }
+
+        let mut gfx = GraphicsBuffered::new(ecran);
+        let mut prev_x = self.scale_x(0).max(self.plot_x + 1).min(right_edge - 1);
+        let mut prev_y = self.scale_y(self.get_sample(0)).max(self.plot_y + 1).min(bottom_edge - 1);
+
+        for i in 1..self.count {
+            let next_x = self.scale_x(i).max(self.plot_x + 1).min(right_edge - 1);
+            let next_y = self.scale_y(self.get_sample(i)).max(self.plot_y + 1).min(bottom_edge - 1);
+            line_buf(&mut gfx, prev_x, prev_y, next_x, next_y, self.config.line_color);
+            prev_x = next_x;
+            prev_y = next_y;
+        }
+    }
+
+    /// Rendu d'un f32 en framebuffer (équivalent de `draw_f32` pour St7789vBuffered).
+    fn draw_f32_buf<SPI, DC, RST>(
+        &self,
+        ecran: &mut St7789vBuffered<SPI, DC, RST>,
+        x: u16, y: u16,
+        val: f32,
+        decimales: u8,
+        fg: Color,
+    ) where
+        SPI: embedded_hal_async::spi::SpiDevice,
+        DC: embedded_hal::digital::OutputPin,
+        RST: embedded_hal::digital::OutputPin,
+    {
+        let bg = self.config.bg_color;
+        if val.is_nan()      { ecran.draw_str_buf(x, y, b"NaN",  fg, bg); return; }
+        if val.is_infinite() {
+            if val > 0.0 { ecran.draw_str_buf(x, y, b"+Inf", fg, bg); }
+            else         { ecran.draw_str_buf(x, y, b"-Inf", fg, bg); }
+            return;
+        }
+        let negatif = val < 0.0;
+        let mut abs = if negatif { -val } else { val };
+        let mut cx = x;
+        if negatif { cx = ecran.draw_char_buf(cx, y, 10, fg, bg); } // '-'
+        let facteur = { let mut f = 1u32; for _ in 0..decimales { f *= 10; } f };
+        abs += 0.5 / facteur as f32;
+        let entier = abs as u32;
+        cx = ecran.draw_u32_buf(cx, y, entier, fg, bg);
+        if decimales > 0 {
+            cx = ecran.draw_char_buf(cx, y, 38, fg, bg); // '.'
+            let mut frac = abs - entier as f32;
+            let mut chiffres = [0u8; 8];
+            for i in 0..decimales as usize { frac *= 10.0; chiffres[i] = frac as u8; frac -= chiffres[i] as f32; }
+            for i in 0..decimales as usize { cx = ecran.draw_char_buf(cx, y, chiffres[i] as usize, fg, bg); }
+        }
+        let _ = cx;
     }
 }
