@@ -23,7 +23,7 @@ Moteur de tracé de graphiques cartésiens (X, Y) adaptatifs et configurables po
 
 ```toml
 [dependencies]
-embassy-st7789v          = "0.2"
+embassy-st7789v          = "0.3"
 embassy-st7789v-graphics = "0.2"
 embassy-st7789v-plot     = "0.2"
 embedded-hal             = "1.0"
