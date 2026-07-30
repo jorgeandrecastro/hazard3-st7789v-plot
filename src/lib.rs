@@ -15,6 +15,7 @@
 //!   automatique / coloration du zéro.
 //! - **Historique circulaire** : Jusqu'à 240 points (limite physique de l'écran).
 //! - **Protection stricte des bordures** : Clamping des primitives à l'espace interne utile.
+//! - **Réexportations `embassy-st7789v`** : Ce crate ré-exporte `Color`, `NoPin`, `St7789v`, `St7789vBuffered`, `SCREEN_H`, `SCREEN_W`, `APPROX`, `DEGREE`, `DELTA`, `DIVIDE`, `GE`, `INFINITY`, `LAMBDA`, `LE`, `PI`, `PLUS_MINUS`, `SQRT`, `THETA` et `TIMES` pour une importation plus simple depuis `embassy_st7789v_plot`.
 //! - **Deux modes de rendu** :
 //!
 //! | Mode | Type | Clignotement |
@@ -137,7 +138,11 @@
 //! Les primitives `render_buf` n'accèdent jamais au SPI — aucune erreur possible.
 use embedded_hal::digital::OutputPin;
 use embedded_hal_async::spi::SpiDevice;
-use embassy_st7789v::{Color, NoPin, St7789v, St7789vBuffered, SCREEN_H, SCREEN_W};
+/// Re-exportation des types principaux pour simplifier l'importation
+pub use embassy_st7789v::{
+    Color, NoPin, St7789v, St7789vBuffered, SCREEN_H, SCREEN_W,
+    APPROX, DEGREE, DELTA, DIVIDE, GE, INFINITY, LAMBDA, LE, PI, PLUS_MINUS, SQRT, THETA, TIMES,
+};
 use embassy_st7789v_graphics::{GraphicsBuffered, line_buf};
 
 

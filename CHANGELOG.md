@@ -5,6 +5,13 @@ Tous les changements notables de ce projet seront documentés dans ce fichier.
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et ce projet respecte le [Semantic Versioning](https://semver.org/lang/fr/).
 
 
+## [0.4.0] — 2026
+
+### Modifié
+- Aucun changement d'API existante : compatibilité ascendante totale
+- Réexport de `embassy-st7789v` : `Color`, `NoPin`, `St7789v`, `St7789vBuffered`, `SCREEN_H`, `SCREEN_W`, `APPROX`, `DEGREE`, `DELTA`, `DIVIDE`, `GE`, `INFINITY`, `LAMBDA`, `LE`, `PI`, `PLUS_MINUS`, `SQRT`, `THETA`, `TIMES`
+
+
 ## [0.3.0] — 2026
 
 ### Ajouté
@@ -16,8 +23,6 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
   - `draw_f32_buf` : helper interne pour afficher les labels flottants en RAM
 - Dépendance ajoutée : `embassy-st7789v-graphics` (pour `GraphicsBuffered` et `line_buf`)
 
-### Modifié
-- Aucun changement d'API existante : compatibilité ascendante totale
 
 
 ## [0.2.0] - 2026-05-29

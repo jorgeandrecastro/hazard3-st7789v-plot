@@ -23,11 +23,40 @@ Moteur de tracé de graphiques cartésiens (X, Y) adaptatifs et configurables po
 
 ```toml
 [dependencies]
-embassy-st7789v          = "0.3"
-embassy-st7789v-graphics = "0.2"
-embassy-st7789v-plot     = "0.2"
+embassy-st7789v          = "0.5"
+embassy-st7789v-graphics = "0.4"
+embassy-st7789v-plot     = "0.4"
 embedded-hal             = "1.0"
 embedded-hal-async       = "1.0"
+```
+
+Ce crate ré-exporte également des éléments de `embassy-st7789v`, notamment `Color`, `NoPin`, `St7789v`, `St7789vBuffered`, `SCREEN_H`, `SCREEN_W`, `APPROX`, `DEGREE`, `DELTA`, `DIVIDE`, `GE`, `INFINITY`, `LAMBDA`, `LE`, `PI`, `PLUS_MINUS`, `SQRT`, `THETA` et `TIMES`.
+
+### Exemple : texte avec symboles
+
+```rust
+use embassy_st7789v::{Color, St7789v, St7789vBuffered, SCREEN_H};
+use embassy_st7789v_plot::{DEGREE, INFINITY, PI};
+
+let mut ecran = St7789vBuffered::new(St7789v::new(spi_dev, dc, rst));
+let bg = Color::BLACK;
+let H = SCREEN_H as u16;
+
+// ---- TEXTE AVEC SYMBOLES ----
+let _ = ecran.draw_str_scaled_buf(20, 2, b"GRAPHICS DEMO", Color::CYAN, bg, 2);
+let _ = ecran.draw_str_scaled_buf(2, H as u16 - 48, b"Ligne  Cercle  Triangle  Ellipse  Bezier", Color::WHITE, bg, 1);
+
+// Afficher ∞
+let _ = ecran.draw_str_scaled_buf(2, H as u16 - 32, b"INFINI ", Color::WHITE, bg, 1);
+let _ = ecran.draw_str_scaled_buf(2 + 7 * 6, H as u16 - 32, &[INFINITY], Color::YELLOW, bg, 1);
+
+// Afficher π
+let _ = ecran.draw_str_scaled_buf(2, H as u16 - 20, b"PI ", Color::WHITE, bg, 1);
+let _ = ecran.draw_str_scaled_buf(2 + 3 * 6, H as u16 - 20, &[PI], Color::YELLOW, bg, 1);
+
+// Afficher °
+let _ = ecran.draw_str_scaled_buf(2 + 4 * 6 + 6, H as u16 - 20, b"DEG ", Color::WHITE, bg, 1);
+let _ = ecran.draw_str_scaled_buf(2 + 4 * 6 + 6 + 4 * 6, H as u16 - 20, &[DEGREE], Color::YELLOW, bg, 1);
 ```
 
 ---
@@ -66,7 +95,7 @@ let mut gfx = Graphics::new_no_rst(&mut display);
 chart.render(&mut gfx).await;
 ```
 
-### Mode framebuffer sync (`LineChartBuffered`) — zéro clignotement
+### Mode framebuffer sync (`LineChartBuffered`) zéro clignotement
 
 Toutes les opérations de dessin écrivent en RAM. Un seul `flush()` envoie tout à l'écran.
 Nécessite `St7789vBuffered` du crate `embassy-st7789v` (150 Ko RAM).
