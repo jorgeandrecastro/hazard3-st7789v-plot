@@ -1,6 +1,6 @@
 [package]
 edition = "2024"
-name = "embassy-st7789v-plot"
+name = "hazard3-st7789v-plot"
 version = "0.5.0"
 authors = ["Jorge Andre Castro <georgeandrec@gmail.com>"]
 build = false
@@ -9,11 +9,11 @@ autobins = false
 autoexamples = false
 autotests = false
 autobenches = false
-description = "Moteur de tracé de graphiques cartésiens (X, Y) adaptatifs et configurables pour écrans TFT LCD **ST7789V 240×320**, construit au-dessus de [`embassy-st7789v`](https://crates.io/crates/embassy-st7789v)."
-documentation = "https://docs.rs/embassy-st7789v-plot"
+description = "no_std Cartesian plotting for ST7789V displays in the independent Hazard3 Async ecosystem."
+documentation = "https://docs.rs/hazard3-st7789v-plot"
 readme = "README.md"
 keywords = [
-    "embassy",
+    "hazard3",
     "st7789v",
     "plot",
     "oscilloscope",
@@ -26,17 +26,24 @@ categories = [
     "visualization",
 ]
 license = "GPL-2.0-or-later"
-repository = "https://github.com/jorgeandrecastro/embassy-st7789v"
+repository = "https://github.com/jorgeandrecastro/hazard3-st7789v-plot"
 
 [lib]
-name = "embassy_st7789v_plot"
+name = "hazard3_st7789v_plot"
 path = "src/lib.rs"
 
-[dependencies.embassy-st7789v]
-version = "0.5"
+[features]
+default = ["time-hazard3"]
+time-hazard3 = ["hazard3-st7789v/time-hazard3", "hazard3-st7789v-graphics/time-hazard3"]
+time-upstream = ["hazard3-st7789v/time-upstream", "hazard3-st7789v-graphics/time-upstream"]
 
-[dependencies.embassy-st7789v-graphics]
-version = "0.4"
+[dependencies.hazard3-st7789v]
+version = "0.8"
+default-features = false
+
+[dependencies.hazard3-st7789v-graphics]
+version = "0.5"
+default-features = false
 
 [dependencies.embedded-trig-f32]
 version = "0.1"
