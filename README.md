@@ -3,6 +3,10 @@
 A configurable Cartesian (X, Y) plotting engine for **ST7789V 240×320** TFT LCD displays, built on [`hazard3-st7789v`](https://crates.io/crates/hazard3-st7789v).
 It is part of [Hazard3 Async](https://github.com/jorgeandrecastro/hazard3-async), an independent ecosystem for the RP2350's RISC-V Hazard3 cores, not affiliated with the Embassy project.
 
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20or%20Apache--2.0-blue.svg)](https://opensource.org/licenses/MIT)
+[![docs.rs](https://docs.rs/hazard3-st7789v-plot/badge.svg)](https://docs.rs/hazard3-st7789v-plot)
+
+
 ## Features
 
 - **`#![no_std]` + `#![forbid(unsafe_code)]`**: Safe and embedded-friendly
@@ -24,22 +28,22 @@ It is part of [Hazard3 Async](https://github.com/jorgeandrecastro/hazard3-async)
 
 ```toml
 [dependencies]
-hazard3-st7789v-plot = "0.5"
+hazard3-st7789v-plot = "0.6"
 ```
 
-Version 0.5 of this new package must be published on crates.io before it can be installed.
+Version 0.6 of this new package must be published on crates.io before it can be installed.
 The default `time-hazard3` backend uses `hazard3-time`: the application must provide a compatible time driver and runtime. See the [Hazard3 Async quick start](https://github.com/jorgeandrecastro/hazard3-async#quick-start).
 
 To use the official Embassy backend instead:
 
 ```toml
 [dependencies]
-hazard3-st7789v-plot = { version = "0.5", default-features = false, features = ["time-upstream"] }
+hazard3-st7789v-plot = { version = "0.6", default-features = false, features = ["time-upstream"] }
 ```
 
 Enable exactly one backend and use a compatible time driver.
 If the driver or graphics layer are also direct dependencies, use
-`hazard3-st7789v = "0.8"` and `hazard3-st7789v-graphics = "0.5"` with the same
+`hazard3-st7789v = "0.9"` and `hazard3-st7789v-graphics = "0.6"` with the same
 backend. For `time-upstream`, disable their default features as well.
 Cargo features are additive: do not mix the two backends.
 
@@ -293,9 +297,19 @@ let mut pres: LineChartBuffered<100> = LineChartBuffered::new(config);
 
 ---
 
-## License
+## 🛡️ License
 
-GPL-2.0-or-later — **Copyright (C) 2026 Jorge Andre Castro**
+Licensed under either of:
+
+    MIT license (http://opensource.org/licenses/MIT)
+
+    Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+
+at your option.
+
+## 🦅 About
+
+Developed by Jorge Andre Castro.
 
 ---
 

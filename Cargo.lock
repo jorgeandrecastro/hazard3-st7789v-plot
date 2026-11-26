@@ -49,6 +49,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "embedded-f32-sqrt"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fb45ffa2451b2b2b68f3b97bf16e42c2ae25bb642f08ce772fe53a4c47f4f84"
+
+[[package]]
 name = "embedded-hal"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -75,9 +81,12 @@ dependencies = [
 
 [[package]]
 name = "embedded-trig-f32"
-version = "0.1.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03084da27cfcc6ee0b4a40eb3787f5d386353761a2a992710e6140a65e913d2d"
+checksum = "1657c9b6339a6b77a5023ad28b9c69f572c7db20c8841690209ab3812ec0c384"
+dependencies = [
+ "embedded-f32-sqrt",
+]
 
 [[package]]
 name = "futures-core"
@@ -87,9 +96,9 @@ checksum = "7e3450815272ef58cec6d564423f6e755e25379b217b0bc688e295ba24df6b1d"
 
 [[package]]
 name = "hazard3-st7789v"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6aa6490c8ce65636c2f54039bb6c2856efc9d39aed546fcc2d646a82ccf580b"
+checksum = "87ad2a01ded7fcd13e63b206984ccd650c18559420b6094cac7a348e6b9a6603"
 dependencies = [
  "embassy-time",
  "embedded-hal 1.0.0",
@@ -99,9 +108,9 @@ dependencies = [
 
 [[package]]
 name = "hazard3-st7789v-graphics"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c406c962829723c6676ac192b7b109a2c703f985aa33f60a0c0fcbe33739e523"
+checksum = "4c1daac68fed3e26618619bfaec913275e19996b75a367eb6fb01adfb9e57749"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
@@ -110,7 +119,7 @@ dependencies = [
 
 [[package]]
 name = "hazard3-st7789v-plot"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
